@@ -44,7 +44,7 @@ class User(Base):
     name = Column(String(24), nullable=False)
     patronymic = Column(String(24))
     # avatar = Column()
-    id_address = Column(Integer, ForeignKey("address_table.id"), nullable=False)
+    id_address = Column(Integer, ForeignKey("address_table.id"))
     phone = Column(String(12))
     id_dcp = Column(Integer, ForeignKey("dcp_table.id"))
     id_role = Column(Integer, ForeignKey("role_table.id"))
@@ -57,7 +57,7 @@ class User(Base):
     characteristic = relationship("UserСharacteristic", backref=backref("user", uselist=False))
 
     userdeck = relationship("UserDeck")
-    affinity = relationship("Affinity")
+    # affinity = relationship("Affinity")
     group = relationship("Group")
     news = relationship("News")
     events = relationship("Events")
@@ -77,22 +77,22 @@ class Cards(Base):
 class UserDeck(Base):
     __tablename__ = "deck_table"
 
-    id_card = Column(Integer, ForeignKey("cards_table.id"), nullable=False)
-    id_user = Column(Integer, ForeignKey("user_table.id"), nullable=False)
+    id_card = Column(Integer, ForeignKey("cards_table.id"))
+    id_user = Column(Integer, ForeignKey("user_table.id"))
 
 
-class Affinity(Base):
-    __tablename__ = "affinity_table"
+# class Affinity(Base):
+#     __tablename__ = "affinity_table"
 
-    id_relative = Column(Integer, ForeignKey("user_table.id"), nullable=False)
-    id_child = Column(Integer, ForeignKey("user_table.id"), nullable=False)
+#     id_relative = Column(Integer, ForeignKey("user_table.id"), nullable=False)
+#     id_child = Column(Integer, ForeignKey("user_table.id"), nullable=False)
 
 
 class Group(Base):
     __tablename__ = "group_table"
 
     name = Column(String(32), nullable=False)
-    id_teacher = Column(Integer, ForeignKey("user_table.id"), nullable=False)
+    id_teacher = Column(Integer, ForeignKey("user_table.id"))
 
     dancegroup = relationship("DanceGroup")
     timetable = relationship("Timetable")
@@ -104,7 +104,7 @@ class News(Base):
     news_title = Column(String(32), nullable=False)
     news_description = Column(String(512))
     # photo = Column()
-    id_autor = Column(Integer, ForeignKey("user_table.id"), nullable=False)
+    id_autor = Column(Integer, ForeignKey("user_table.id"))
 
 
 class Events(Base):
@@ -113,7 +113,7 @@ class Events(Base):
     event_title = Column(String(32), nullable=False)
     event_description = Column(String(512))
     event_date = Column(DateTime, nullable=False)
-    id_autor = Column(Integer, ForeignKey("user_table.id"), nullable=False)
+    id_autor = Column(Integer, ForeignKey("user_table.id"))
 
     timetable = relationship("Timetable")
 
@@ -121,12 +121,12 @@ class Events(Base):
 class DanceGroup(Base):
     __tablename__ = "dancegroup_table"
 
-    id_group = Column(Integer, ForeignKey("group_table.id"), nullable=False)
-    id_user = Column(Integer, ForeignKey("user_table.id"), nullable=False)
+    id_group = Column(Integer, ForeignKey("group_table.id"))
+    id_user = Column(Integer, ForeignKey("user_table.id"))
 
 
 class Timetable(Base):
     __tablename__ = "time_table"
 
-    id_group = Column(Integer, ForeignKey("group_table.id"), nullable=False)
-    id_event = Column(Integer, ForeignKey("events_table.id"), nullable=False)
+    id_group = Column(Integer, ForeignKey("group_table.id"))
+    id_event = Column(Integer, ForeignKey("events_table.id"))

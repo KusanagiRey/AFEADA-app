@@ -11,9 +11,57 @@ services:
     
     ports:
       - "5432:5432"
+    
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - postgres_data:/var/lib/postgresql/data
 
   adminer:
     image: adminer
     restart: always
     ports:
       - "8080:8080"  
+
+  backend:
+    image: backend
+    container_name: afeada-fastapi
+    restart: always
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - .env
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      - database
+
+    volumes:
+      - ./back:/back
+
+  redis:
+    image: redis
+    restart: on-failure
+    command: "redis-server --requirepass ${REDIS_PASSWORD:-secret}"
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
+  rq_worker:
+    image: backend
+    command: rq worker --with-scheduler
+    env_file:
+      - .env
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
