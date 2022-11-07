@@ -1,41 +1,20 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
-from sqlalchemy.orm import backref, relationship
+import enum
+
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum
+from sqlalchemy.orm import relationship
+from sqlalchemy_utils import URLType
 
 from database.base import Base
 from database.mixins import TimestampMixin
 
 
-class UserAddress(TimestampMixin, Base):
-    __tablename__ = "address_table"
+class UserRole(enum.IntEnum):
 
-    street = Column(String(128), nullable=False)
-    house_number = Column(String(64), nullable=False)
-    flat = Column(Integer)
+    teacher = 1
+    student = 2
 
 
-class UserDCP(Base):
-    __tablename__ = "dcp_table"
-
-    amount = Column(Integer)
-
-
-class UserRole(Base):
-    __tablename__ = "role_table"
-
-    role = Column(String(64), index=True, nullable=False)
-
-
-class UserСharacteristic(Base):
-    __tablename__ = "characteristic_table"
-
-    Strength = Column(Integer)
-    Agility = Column(Integer)
-    Flexibility = Column(Integer)
-    Stamina = Column(Integer)
-    Stress_resist = Column(Integer)
-
-
-class User(Base):
+class User(TimestampMixin, Base):
     __tablename__ = "user_table"
 
     login = Column(String(64), index=True, nullable=False)
@@ -43,25 +22,45 @@ class User(Base):
     surename = Column(String(24), nullable=False)
     name = Column(String(24), nullable=False)
     patronymic = Column(String(24))
-    # avatar = Column()
-    id_address = Column(Integer, ForeignKey("address_table.id"))
+    avatar = Column(URLType)
     phone = Column(String(12))
-    id_dcp = Column(Integer, ForeignKey("dcp_table.id"))
-    id_role = Column(Integer, ForeignKey("role_table.id"))
-    id_characteristic = Column(Integer, ForeignKey("characteristic_table.id"))
-    # qr_code = Column()
+    dcp = Column(Integer)
+    role = Column(Enum(UserRole))
+    qr_code = Column(URLType)
+    
+    address = relationship("UserAddress", back_populates="owner", uselist=False)
+    characterisric = relationship("UserСharacteristic", back_populates="owner", uselist=False)
+    userdeck = relationship("UserDeck", back_populates="owner")
+    group = relationship("Group", back_populates="owner")
+    dancegroupUser = relationship("DanceGroup", back_populates="owner")
+    news = relationship("News", back_populates="owner")
+    events = relationship("Events", back_populates="owner")
 
-    address = relationship("UserAddress", backref=backref("user", uselist=False))
-    dcp = relationship("UserDCP", backref=backref("user", uselist=False))
-    role = relationship("UserRole", backref=backref("user", uselist=False))
-    characteristic = relationship("UserСharacteristic", backref=backref("user", uselist=False))
-
-    userdeck = relationship("UserDeck")
     # affinity = relationship("Affinity")
-    group = relationship("Group")
-    news = relationship("News")
-    events = relationship("Events")
-    dancegroupUser = relationship("DanceGroup")
+    
+    
+class UserAddress(TimestampMixin, Base):
+    __tablename__ = "address_table"
+
+    user_id = Column(Integer, ForeignKey("user_table.id"), nullable=False)
+    street = Column(String(128), nullable=False)
+    house_number = Column(String(64), nullable=False)
+    flat = Column(Integer)
+
+    owner = relationship("User", back_populates="address")
+
+
+class UserСharacteristic(TimestampMixin, Base):
+    __tablename__ = "characteristic_table"
+
+    user_id = Column(Integer, ForeignKey("user_table.id"), nullable=False)
+    Strength = Column(Integer)
+    Agility = Column(Integer)
+    Flexibility = Column(Integer)
+    Stamina = Column(Integer)
+    Stress_resist = Column(Integer)
+
+    owner = relationship("User", back_populates="characterisric")
 
 
 class Cards(Base):
@@ -69,9 +68,9 @@ class Cards(Base):
 
     card_name = Column(String(32), index=True, nullable=False)
     card_discription = Column(String(512), nullable=False)
-    # card_look = Column()
+    card_look = Column(URLType)
 
-    cardsdeck = relationship("UserDeck")
+    cardsdeck = relationship("UserDeck", back_populates="card")
 
 
 class UserDeck(Base):
@@ -79,6 +78,9 @@ class UserDeck(Base):
 
     id_card = Column(Integer, ForeignKey("cards_table.id"))
     id_user = Column(Integer, ForeignKey("user_table.id"))
+
+    owner = relationship("User", back_populates="userdeck")
+    card = relationship("Cards", back_populates="cardsdeck")
 
 
 # class Affinity(Base):
@@ -94,8 +96,19 @@ class Group(Base):
     name = Column(String(32), nullable=False)
     id_teacher = Column(Integer, ForeignKey("user_table.id"))
 
-    dancegroup = relationship("DanceGroup")
-    timetable = relationship("Timetable")
+    owner = relationship("User", back_populates="group")
+    dancegroup = relationship("DanceGroup", back_populates="group")
+    timetable = relationship("Timetable", back_populates="group")
+
+
+class DanceGroup(Base):
+    __tablename__ = "dancegroup_table"
+
+    id_group = Column(Integer, ForeignKey("group_table.id"))
+    id_user = Column(Integer, ForeignKey("user_table.id"))
+
+    owner = relationship("User", back_populates="dancegroupUser")
+    group = relationship("Group", back_populates="dancegroup")
 
 
 class News(Base):
@@ -103,8 +116,10 @@ class News(Base):
 
     news_title = Column(String(32), nullable=False)
     news_description = Column(String(512))
-    # photo = Column()
+    photo = Column(URLType)
     id_autor = Column(Integer, ForeignKey("user_table.id"))
+
+    owner = relationship("User", back_populates="news")
 
 
 class Events(Base):
@@ -115,14 +130,8 @@ class Events(Base):
     event_date = Column(DateTime, nullable=False)
     id_autor = Column(Integer, ForeignKey("user_table.id"))
 
-    timetable = relationship("Timetable")
-
-
-class DanceGroup(Base):
-    __tablename__ = "dancegroup_table"
-
-    id_group = Column(Integer, ForeignKey("group_table.id"))
-    id_user = Column(Integer, ForeignKey("user_table.id"))
+    owner = relationship("User", back_populates="events")
+    timetable = relationship("Timetable", back_populates="event")
 
 
 class Timetable(Base):
@@ -130,3 +139,6 @@ class Timetable(Base):
 
     id_group = Column(Integer, ForeignKey("group_table.id"))
     id_event = Column(Integer, ForeignKey("events_table.id"))
+
+    group = relationship("Group", back_populates="timetable")
+    event = relationship("Events", back_populates="timetable")
