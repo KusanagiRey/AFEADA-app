@@ -86,3 +86,20 @@ class UserDeckSchema(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class NewsSchemaIn(BaseModel):
+    id: Optional[int]
+    news_title: str
+    news_description: Optional[str]
+    id_autor: int
+
+    class Config:
+        orm_mode = True
+
+class NewsAvatarSchema(BaseModel):
+    photo: str
+
+    class Config:
+        orm_mode = True
+

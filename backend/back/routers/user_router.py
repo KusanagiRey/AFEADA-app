@@ -3,11 +3,12 @@ from typing import List
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy import delete
 
 from pydantic import parse_obj_as
 
@@ -16,19 +17,12 @@ from database.engine import get_async_session
 
 from routers.schemas import UserCreateSchema, UserAvatarSchema, UserSchemaOut, \
     СharacteristicSchemaIn, СharacteristicUpdateSchema,\
-    CardsSchemaIn, CardsSchemaOut, CardsList,\
-    DecksSchema, UserDeckSchema
+    CardsSchemaIn, CardsSchemaOut, CardsList, DecksSchema, \
+    NewsSchemaIn, NewsAvatarSchema
 
 
 user_router = APIRouter(prefix='/user')
 
-
-# @user_router.get('/news', name='Все новости', tags=['Пользователь'])
-# async def get_all_news(session: AsyncSession = Depends(get_async_session)):
-#     q = select(News.id, News.news_title, News.news_description, User.surename, User.name, User.patronymic).join(News, User.id == News.id_autor)
-    
-#     news = (await session.execute(q)).all()
-#     return news
 
 @user_router.post('/createuser', name='Добавить пользователя', response_model=UserCreateSchema, tags=['Пользователь'])
 async def create_user(user: UserCreateSchema, session: AsyncSession = Depends(get_async_session)):
@@ -51,10 +45,10 @@ async def change_img(
 
     date = datetime.now().strftime("%Y%m%d%H%M%S")
 
-    with open("static/media/"+date+file.filename, "wb") as image:
+    with open("static/media/avatar/"+date+file.filename, "wb") as image:
         shutil.copyfileobj(file.file, image)
 
-    avatar = str("static/media/"+date+file.filename)
+    avatar = str("static/media/avatar/"+date+file.filename)
     
 
     u = await session.get(User, user_id)
@@ -139,13 +133,13 @@ async def create_user(card_id: int, file: UploadFile = File(...), session: Async
     raise HTTPException(status_code=404, detail='Card not found!')
 
 
-# @user_router.get('/cards', name='Все карты', response_model=CardsList, tags=['Карты'])
-# async def get_all_cards(session: AsyncSession = Depends(get_async_session)):
-#     query = select(Cards)
-#     cards = (await session.execute(query)).scalars().all()
-#     if cards is not None:
-#         return CardsList(count=len(cards), cards=parse_obj_as(List[CardsSchemaOut], cards))
-#     raise HTTPException(status_code=404, detail='Cards not found!')
+@user_router.get('/cards/get', name='Все карты', response_model=CardsList, tags=['Карты'])
+async def get_all_cards(session: AsyncSession = Depends(get_async_session)):
+    query = select(Cards)
+    cards = (await session.execute(query)).scalars().all()
+    if cards is not None:
+        return CardsList(count=len(cards), cards=parse_obj_as(List[CardsSchemaOut], cards))
+    raise HTTPException(status_code=404, detail='Cards not found!')
 
 
 @user_router.post('/givecard', name='Дать карту пользователю', response_model=DecksSchema, tags=['Карты'])
@@ -173,6 +167,57 @@ async def get_user_deck(user_id: int, session: AsyncSession = Depends(get_async_
    return result
 
 
+@user_router.post('/news/add/{user_id}', name='Создать новость', response_model=NewsSchemaIn, tags=['Новостная лента'])
+async def add_news(user_id: int, news: NewsSchemaIn, session: AsyncSession = Depends(get_async_session)):
+
+    n = News()
+    d = news.dict()
+    for k in d:
+        setattr(n, k, d[k])
+    setattr(n, 'id_autor', user_id)
+    session.add(n)
+    await session.commit()
+    await session.refresh(n)
+    return NewsSchemaIn.from_orm(n)
+
+@user_router.post('/add/newsimage/{news_id}', name='Загрузить картинку', response_model=NewsAvatarSchema, tags=['Новостная лента'])
+async def change_img(
+    news_id: int, 
+    file: UploadFile = File(...), 
+    session: AsyncSession = Depends(get_async_session)):
+
+    date = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    with open("static/media/news/"+date+file.filename, "wb") as image:
+        shutil.copyfileobj(file.file, image)
+
+    photo = str("static/media/news/"+date+file.filename)
+
+    n = await session.get(News, news_id)
+    if n is not None:
+        setattr(n, 'photo', photo)
+        session.add(n)
+        await session.commit()
+        await session.refresh(n)
+        return NewsAvatarSchema.from_orm(n)
+    raise HTTPException(status_code=404, detail='News not found!')
+
+
+@user_router.get('/news/get', name='Все новости', tags=['Новостная лента'])
+async def get_all_news(session: AsyncSession = Depends(get_async_session)):
+    q = select(News.id, News.news_title, News.news_description, News.photo, User.surename, User.name, User.patronymic).join(News, User.id == News.id_autor)
+    
+    news = (await session.execute(q)).all()
+    return news
+
+
+@user_router.delete('/news/delete/{news_id}', name='Удалить новость', response_class=Response, tags=['Новостная лента'])
+async def delete_user(news_id: int, session: AsyncSession = Depends(get_async_session)):
+    q = delete(News).where(News.id == news_id)
+    await session.execute(q)
+    return Response(status_code=204)
+
+
 
 # @user_router.get('/tabletime/{user_id}', name='Расписание пользователя')
 # async def get_all_events_by_user(user_id: int, session: AsyncSession = Depends(get_async_session)):
@@ -185,6 +230,3 @@ async def get_user_deck(user_id: int, session: AsyncSession = Depends(get_async_
 
 #     tt = (await session.execute(q)).all()
 #     return tt
-
-
-
