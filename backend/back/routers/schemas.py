@@ -1,4 +1,5 @@
 from typing import Optional, List
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -103,3 +104,46 @@ class NewsAvatarSchema(BaseModel):
     class Config:
         orm_mode = True
 
+
+class GroupSchemaIn(BaseModel):
+    id: Optional[int]
+    name: str
+    id_teacher: int
+
+    class Config:
+        orm_mode = True
+
+class GroupSchemaOut(BaseModel):
+    id: int
+    name: str
+    owner: UserSchemaIn
+
+class DanceGroupSchemaIn(BaseModel):
+    id: Optional[int]
+    id_group: int
+    id_user: int
+
+    class Config:
+        orm_mode = True
+
+class DanceGroupSchemaOut(DanceGroupSchemaIn):
+    users: List[UserSchemaIn]
+
+
+class EventsSchemaIn(BaseModel):
+    id: Optional[int]
+    event_title: str
+    event_description: Optional[str]
+    event_date: datetime
+    id_autor: int
+
+    class Config:
+        orm_mode = True
+
+class TimetableSchemaIn(BaseModel):
+    id: Optional[int]
+    id_group: int
+    id_event: int
+
+    class Config:
+        orm_mode = True
