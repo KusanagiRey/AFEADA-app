@@ -37,23 +37,6 @@ services:
     depends_on:
       - database
 
-  redis:
-    image: redis
-    restart: on-failure
-    command: "redis-server --requirepass ${REDIS_PASSWORD:-secret}"
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-
-  rq_worker:
-    image: backend
-    command: rq worker --with-scheduler
-    env_file:
-      - .env
-
   nginx:
     depends_on:
       - backend
@@ -67,6 +50,4 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-  redis_data:
     driver: local

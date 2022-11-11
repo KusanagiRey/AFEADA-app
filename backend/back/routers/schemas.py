@@ -147,3 +147,23 @@ class TimetableSchemaIn(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class SignUpUserSchema(BaseModel):
+    login: str
+    password: str
+    surename: str
+    name: str
+    patronymic: Optional[str]
+    phone: Optional[str]
+    role: int = 2
+
+
+class SignUpAdminSchema(BaseModel):
+    login: str
+    password: str
+    surename: str
+    name: str
+    patronymic: Optional[str]
+    phone: Optional[str]
+    role: int = 1

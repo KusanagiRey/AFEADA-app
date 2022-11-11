@@ -15,30 +15,35 @@ from pydantic import parse_obj_as
 from database import News, User, UserСharacteristic, Cards, UserDeck, Group, Events, Timetable, DanceGroup
 from database.engine import get_async_session
 
-from routers.schemas import UserCreateSchema,\
-    СharacteristicSchemaIn, СharacteristicUpdateSchema,\
+from routers.schemas import СharacteristicSchemaIn, СharacteristicUpdateSchema,\
     CardsSchemaIn, CardsSchemaOut, CardsList, DecksSchema, \
     NewsSchemaIn, NewsAvatarSchema, GroupSchemaIn, GroupSchemaOut, \
-    DanceGroupSchemaIn, EventsSchemaIn, TimetableSchemaIn
+    DanceGroupSchemaIn, EventsSchemaIn, TimetableSchemaIn, SignUpAdminSchema
+
+from routers import user_router
+from routers.user_router import get_password_hash
 
 
 admin_router = APIRouter(prefix='/admin')
 
 
-@admin_router.post('/createuser', name='Добавить пользователя', response_model=UserCreateSchema, tags=['Пользователь'])
-async def create_user(user: UserCreateSchema, session: AsyncSession = Depends(get_async_session)):
+@admin_router.post('/createadmin', name='Добавить администратора', 
+dependencies=[Depends(user_router.check_admin)], tags=['Пользователь'])
+async def create_user(new_admin: SignUpAdminSchema, session: AsyncSession = Depends(get_async_session)):
 
     u = User()
-    d = user.dict()
+    d = new_admin.dict()
     for k in d:
         setattr(u, k, d[k])
+    setattr(u, 'password', get_password_hash(new_admin.password))
     session.add(u)
     await session.commit()
     await session.refresh(u)
-    return UserCreateSchema.from_orm(u)
+    return {"message": "Новый администратор зарегистрирован!"}
 
 
-@admin_router.post('/createcharacteristic', name='Создать характеристику пользователя', response_model=СharacteristicSchemaIn, tags=['Пользователь'])
+@admin_router.post('/createcharacteristic', name='Создать характеристику пользователя', 
+response_model=СharacteristicSchemaIn, dependencies=[Depends(user_router.check_admin)], tags=['Пользователь'])
 async def create_user(userCharacteristic: СharacteristicSchemaIn, session: AsyncSession = Depends(get_async_session)):
 
     u = UserСharacteristic()
@@ -51,7 +56,8 @@ async def create_user(userCharacteristic: СharacteristicSchemaIn, session: Asyn
     return СharacteristicSchemaIn.from_orm(u)
 
 
-@admin_router.put('/{characteriscic_id}/changecharacteristic', name='Изменить характеристику пользователя', response_model=СharacteristicSchemaIn, tags=['Пользователь'])
+@admin_router.put('/{characteriscic_id}/changecharacteristic', name='Изменить характеристику пользователя', 
+response_model=СharacteristicSchemaIn, dependencies=[Depends(user_router.check_admin)], tags=['Пользователь'])
 async def update_characteristic(
     characteriscic_id: int, 
     new_user_data: СharacteristicUpdateSchema, 
@@ -70,7 +76,8 @@ async def update_characteristic(
     raise HTTPException(status_code=404, detail='Сharacteristic not found!')
 
 
-@admin_router.post('/createnewcard', name='Создать карту', response_model=CardsSchemaIn, tags=['Карты'])
+@admin_router.post('/createnewcard', name='Создать карту', 
+response_model=CardsSchemaIn, dependencies=[Depends(user_router.check_admin)], tags=['Карты'])
 async def create_user(card: CardsSchemaIn, session: AsyncSession = Depends(get_async_session)):
 
     c = Cards()
@@ -83,7 +90,8 @@ async def create_user(card: CardsSchemaIn, session: AsyncSession = Depends(get_a
     return CardsSchemaIn.from_orm(c)
 
 
-@admin_router.post('/{card_id}/addcardlook', name='Добавить обложку карты', response_model=CardsSchemaOut, tags=['Карты'])
+@admin_router.post('/{card_id}/addcardlook', name='Добавить обложку карты', 
+response_model=CardsSchemaOut, dependencies=[Depends(user_router.check_admin)], tags=['Карты'])
 async def create_user(card_id: int, file: UploadFile = File(...), session: AsyncSession = Depends(get_async_session)):
 
     with open("static/cards/"+file.filename, "wb") as image:
@@ -102,7 +110,8 @@ async def create_user(card_id: int, file: UploadFile = File(...), session: Async
     raise HTTPException(status_code=404, detail='Card not found!')
 
 
-@admin_router.get('/cards/get', name='Все карты', response_model=CardsList, tags=['Карты'])
+@admin_router.get('/cards/get', name='Все карты', 
+response_model=CardsList, dependencies=[Depends(user_router.check_admin)], tags=['Карты'])
 async def get_all_cards(session: AsyncSession = Depends(get_async_session)):
     query = select(Cards)
     cards = (await session.execute(query)).scalars().all()
@@ -111,7 +120,8 @@ async def get_all_cards(session: AsyncSession = Depends(get_async_session)):
     raise HTTPException(status_code=404, detail='Cards not found!')
 
 
-@admin_router.post('/givecard', name='Дать карту пользователю', response_model=DecksSchema, tags=['Карты'])
+@admin_router.post('/givecard', name='Дать карту пользователю', 
+response_model=DecksSchema, dependencies=[Depends(user_router.check_admin)], tags=['Карты'])
 async def give_card(
     deck:DecksSchema,
     session: AsyncSession = Depends(get_async_session)):
@@ -126,7 +136,8 @@ async def give_card(
     return DecksSchema.from_orm(ud)
 
 
-@admin_router.post('/news/add/{user_id}', name='Создать новость', response_model=NewsSchemaIn, tags=['Новостная лента'])
+@admin_router.post('/news/add/{user_id}', name='Создать новость', 
+response_model=NewsSchemaIn, dependencies=[Depends(user_router.check_admin)], tags=['Новостная лента'])
 async def add_news(user_id: int, news: NewsSchemaIn, session: AsyncSession = Depends(get_async_session)):
 
     n = News()
@@ -140,7 +151,8 @@ async def add_news(user_id: int, news: NewsSchemaIn, session: AsyncSession = Dep
     return NewsSchemaIn.from_orm(n)
 
 
-@admin_router.post('/add/newsimage/{news_id}', name='Загрузить картинку', response_model=NewsAvatarSchema, tags=['Новостная лента'])
+@admin_router.post('/add/newsimage/{news_id}', name='Загрузить картинку', 
+response_model=NewsAvatarSchema, dependencies=[Depends(user_router.check_admin)], tags=['Новостная лента'])
 async def change_img(
     news_id: int, 
     file: UploadFile = File(...), 
@@ -163,14 +175,16 @@ async def change_img(
     raise HTTPException(status_code=404, detail='News not found!')
 
 
-@admin_router.delete('/news/delete/{news_id}', name='Удалить новость', response_class=Response, tags=['Новостная лента'])
+@admin_router.delete('/news/delete/{news_id}', name='Удалить новость', 
+response_class=Response, dependencies=[Depends(user_router.check_admin)], tags=['Новостная лента'])
 async def delete_user(news_id: int, session: AsyncSession = Depends(get_async_session)):
     q = delete(News).where(News.id == news_id)
     await session.execute(q)
     return Response(status_code=204)
 
 
-@admin_router.post('/groups/add/{user_id}', name='Создать группу', response_model=GroupSchemaIn, tags=['Танцевальные группы'])
+@admin_router.post('/groups/add/{user_id}', name='Создать группу', 
+response_model=GroupSchemaIn, dependencies=[Depends(user_router.check_admin)], tags=['Танцевальные группы'])
 async def add_group(user_id: int, group: GroupSchemaIn, session: AsyncSession = Depends(get_async_session)):
 
     g = Group()
@@ -184,7 +198,8 @@ async def add_group(user_id: int, group: GroupSchemaIn, session: AsyncSession = 
     return GroupSchemaIn.from_orm(g)
 
 
-@admin_router.get('/groups/all', name='Показать все группы', response_model=List[GroupSchemaOut], tags=['Танцевальные группы'])
+@admin_router.get('/groups/all', name='Показать все группы', 
+response_model=List[GroupSchemaOut], dependencies=[Depends(user_router.check_admin)], tags=['Танцевальные группы'])
 async def show_all_groups(session: AsyncSession = Depends(get_async_session)):
     groups = select(Group).options(selectinload(Group.owner))
     result = (await session.execute(groups)).scalars().all()
@@ -193,7 +208,8 @@ async def show_all_groups(session: AsyncSession = Depends(get_async_session)):
     raise HTTPException(status_code=404, detail='Group not found!')
 
 
-@admin_router.post('/dancegroup/add', name='Добавить пользователя в группу', response_model=DanceGroupSchemaIn, tags=['Танцевальные группы'])
+@admin_router.post('/dancegroup/add', name='Добавить пользователя в группу', 
+response_model=DanceGroupSchemaIn, dependencies=[Depends(user_router.check_admin)], tags=['Танцевальные группы'])
 async def add_group(dancegroup: DanceGroupSchemaIn, session: AsyncSession = Depends(get_async_session)):
 
     g = DanceGroup()
@@ -206,7 +222,8 @@ async def add_group(dancegroup: DanceGroupSchemaIn, session: AsyncSession = Depe
     return DanceGroupSchemaIn.from_orm(g)
 
 
-@admin_router.post('/event/add/{autor_id}', name='Создать мероприятие', response_model=EventsSchemaIn, tags=['Расписание'])
+@admin_router.post('/event/add/{autor_id}', name='Создать мероприятие', 
+response_model=EventsSchemaIn, dependencies=[Depends(user_router.check_admin)], tags=['Расписание'])
 async def add_event(event: EventsSchemaIn, autor_id: int, session: AsyncSession = Depends(get_async_session)):
    
     e = Events()
@@ -220,7 +237,8 @@ async def add_event(event: EventsSchemaIn, autor_id: int, session: AsyncSession 
     return EventsSchemaIn.from_orm(e)
 
 
-@admin_router.post('/timetable/add', name='Добавить группу к мероприятию', response_model=TimetableSchemaIn, tags=['Расписание'])
+@admin_router.post('/timetable/add', name='Добавить группу к мероприятию', 
+response_model=TimetableSchemaIn, dependencies=[Depends(user_router.check_admin)], tags=['Расписание'])
 async def add_timetable(timetable: TimetableSchemaIn, session: AsyncSession = Depends(get_async_session)):
 
     tt = Timetable()
